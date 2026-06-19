@@ -17,9 +17,16 @@
   header .sub{font-size:11px;opacity:.85;font-weight:600}
   header .menu{margin-left:auto;display:none;background:rgba(255,255,255,.15);border:none;color:#fff;
        font-size:18px;border-radius:8px;width:36px;height:36px;cursor:pointer}
+  .toggle{position:sticky;top:50px;z-index:4;display:flex;gap:8px;padding:10px 16px;
+       background:var(--panel2);border-bottom:1px solid var(--border)}
+  .toggle button{flex:1;max-width:200px;background:var(--panel);border:1px solid var(--border);
+       color:var(--muted);font-size:13px;font-weight:700;font-family:inherit;padding:9px 12px;
+       border-radius:9px;cursor:pointer;transition:all .12s}
+  .toggle button:hover{color:var(--text);border-color:var(--muted2)}
+  .toggle button.active{background:var(--accent);color:#06122a;border-color:var(--accent)}
   .wrap{display:flex;min-height:calc(100vh - 50px)}
   aside{width:300px;flex-shrink:0;border-right:1px solid var(--border);background:var(--panel2);
-        overflow-y:auto;max-height:calc(100vh - 50px);position:sticky;top:50px}
+        overflow-y:auto;max-height:calc(100vh - 105px);position:sticky;top:105px}
   .list-item{display:block;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;
         text-decoration:none;color:var(--text);transition:background .12s}
   .list-item:hover{background:var(--panel)}
@@ -51,7 +58,7 @@
   .md hr{border:none;border-top:1px solid var(--border);margin:1.6em 0}
   .md img{max-width:100%}
   @media(max-width:760px){
-    aside{position:fixed;left:0;top:50px;bottom:0;z-index:6;transform:translateX(-100%);
+    aside{position:fixed;left:0;top:105px;bottom:0;z-index:6;transform:translateX(-100%);
           transition:transform .2s;box-shadow:4px 0 18px rgba(0,0,0,.5);max-height:none}
     aside.open{transform:translateX(0)}
     header .menu{display:block}
@@ -65,6 +72,10 @@
   <div><h1>📈 TKS 데일리 리포트</h1><div class="sub">한국증시 데일리 마켓 리뷰</div></div>
   <button class="menu" onclick="document.querySelector('aside').classList.toggle('open')">☰</button>
 </header>
+<div class="toggle">
+  <button id="tEvening" class="active" onclick="setType('evening')">🌆 마감 리뷰</button>
+  <button id="tPre" onclick="setType('premarket')">🌅 장전 프리핑</button>
+</div>
 <div class="wrap">
   <aside id="list"><div class="spinner"></div></aside>
   <main id="content"><div class="empty">왼쪽에서 날짜를 선택하세요.</div></main>
@@ -76,10 +87,21 @@
 const HOST = location.hostname;                       // 예: kimth.github.io
 const USER = HOST.split('.')[0];
 const REPO = location.pathname.split('/').filter(Boolean)[0] || '';
-const API  = `https://api.github.com/repos/${USER}/${REPO}/contents/reports`;
+const FOLDER = { evening:'reports', premarket:'premarket' };   // 토글 → 폴더 매핑
+let _type = 'evening';
+const apiUrl = ()=> `https://api.github.com/repos/${USER}/${REPO}/contents/${FOLDER[_type]}`;
 
 const $list = document.getElementById('list');
 const $content = document.getElementById('content');
+
+function setType(t){
+  if(t===_type) return;
+  _type = t;
+  document.getElementById('tEvening').classList.toggle('active', t==='evening');
+  document.getElementById('tPre').classList.toggle('active', t==='premarket');
+  $content.innerHTML = '<div class="empty">왼쪽에서 날짜를 선택하세요.</div>';
+  loadList();
+}
 
 // 파일명 → {date, title}  (예: 2026-06-19_한국증시_데일리리뷰.md)
 function parseName(name){
@@ -95,7 +117,9 @@ function stripFM(md){ return md.replace(/^﻿?---\r?\n[\s\S]*?\r?\n---\r?\n/, ''
 async function loadList(){
   if(!USER || !REPO){ $list.innerHTML='<div class="err" style="padding:20px">로컬에선 미리보기 불가 —<br>GitHub Pages에서 열어주세요.</div>'; return; }
   try{
-    const r = await fetch(API);
+    $list.innerHTML='<div class="spinner"></div>';
+    const r = await fetch(apiUrl());
+    if(r.status===404){ $list.innerHTML='<div class="empty" style="padding:20px">아직 리포트가 없습니다.</div>'; return; }
     if(!r.ok) throw new Error('목록 조회 실패 ('+r.status+(r.status===403?' · API 한도, 잠시 후':'')+')');
     const files = (await r.json()).filter(f=>/\.md$/i.test(f.name));
     files.sort((a,b)=> b.name.localeCompare(a.name));   // 파일명(날짜) 역순 = 최신 먼저
