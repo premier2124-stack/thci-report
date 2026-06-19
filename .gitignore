@@ -1,0 +1,7 @@
+# 로컬 전용 (머신 경로 포함 → 공개 안 함)
+update.ps1
+
+# OS 잡파일
+Thumbs.db
+.DS_Store
+desktop.ini
