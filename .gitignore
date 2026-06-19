@@ -1,6 +1,4 @@
-# 로컬 전용 (머신 경로 포함 / 헬퍼 → 공개 안 함)
-update.ps1
-동기화.bat
+# (update.ps1·동기화.bat은 머신독립으로 바뀌어 repo에 포함 → 다른 PC clone 시 같이 받아짐)
 
 # OS 잡파일
 Thumbs.db
