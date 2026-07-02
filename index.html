@@ -77,6 +77,7 @@
   <button id="tPre" onclick="setType('premarket')">🌅 장전 브리핑</button>
   <button id="tWeekly" onclick="setType('weekly')">📅 주간 리뷰</button>
   <button id="tMonthly" onclick="setType('monthly')">🗓 월간 리뷰</button>
+  <button id="tAnalysis" onclick="setType('analysis')">🔎 종목 분석</button>
 </div>
 <div class="wrap">
   <aside id="list"><div class="spinner"></div></aside>
@@ -89,10 +90,10 @@
 const HOST = location.hostname;                       // 예: kimth.github.io
 const USER = HOST.split('.')[0];
 const REPO = location.pathname.split('/').filter(Boolean)[0] || '';
-const FOLDER = { evening:'reports', weekly:'reports', monthly:'reports', premarket:'premarket' };   // 탭 → GitHub 폴더
-const TAB_BTN = { evening:'tEvening', premarket:'tPre', weekly:'tWeekly', monthly:'tMonthly' };
+const FOLDER = { evening:'reports', weekly:'reports', monthly:'reports', premarket:'premarket', analysis:'analysis' };   // 탭 → GitHub 폴더
+const TAB_BTN = { evening:'tEvening', premarket:'tPre', weekly:'tWeekly', monthly:'tMonthly', analysis:'tAnalysis' };
 // 같은 reports/ 폴더라도 파일명으로 분류: 주간=주간리뷰 / 월간=월간리뷰 / 마감=둘 다 아닌 일일
-const TYPE_FILTER = { evening:n=>!/주간|월간/.test(n), weekly:n=>/주간/.test(n), monthly:n=>/월간/.test(n), premarket:null };
+const TYPE_FILTER = { evening:n=>!/주간|월간/.test(n), weekly:n=>/주간/.test(n), monthly:n=>/월간/.test(n), premarket:null, analysis:null };
 let _type = 'evening';
 const apiUrl = ()=> `https://api.github.com/repos/${USER}/${REPO}/contents/${FOLDER[_type]}`;
 

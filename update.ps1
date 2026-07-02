@@ -1,5 +1,5 @@
 ﻿# TKS 리포트 → GitHub 동기화 (머신 독립 — 노트북/사무실 어디서든 동작)
-# OneDrive의 마감리뷰 + 장전프리핑 .md를 이 repo로 복사 → pull → commit → push
+# OneDrive의 마감리뷰 + 장전프리핑 + 종목분석 .md를 이 repo로 복사 → pull → commit → push
 # 실행: 같은 폴더의 "동기화.bat" 더블클릭 (또는 우클릭 → PowerShell에서 실행)
 
 $ErrorActionPreference = "Stop"
@@ -25,7 +25,12 @@ git pull --no-edit 2>&1 | Out-Host                      # 다른 PC에서 올린
 Copy-Item "$base\2026_시장정리\*.md"   "$repo\reports\"   -Force   # 마감 리뷰
 Copy-Item "$base\2026_장전프리핑\*.md"  "$repo\premarket\" -Force   # 장전 프리핑
 
-git add reports premarket
+# 종목 분석 리포트 (폴더가 비어있어도 sync 안 깨지게 가드)
+$analysisSrc = Join-Path $base "종목분석리포트"
+New-Item -ItemType Directory -Force -Path "$repo\analysis" | Out-Null
+if (Test-Path "$analysisSrc\*.md") { Copy-Item "$analysisSrc\*.md" "$repo\analysis\" -Force }
+
+git add reports premarket analysis
 $msg = "reports update " + (Get-Date -Format "yyyy-MM-dd HH:mm")
 git commit -m $msg
 if ($LASTEXITCODE -eq 0) { git push; Write-Host "`n[OK] 동기화 완료 — 1~2분 후 사이트 반영." -ForegroundColor Green }
