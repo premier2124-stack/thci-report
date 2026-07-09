@@ -83,6 +83,8 @@
   .rtoolbar button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 15px;
         font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
   .rtoolbar button:hover{filter:brightness(1.1)}
+  .rtoolbar .stopbtn{background:var(--panel);color:var(--muted);border:1px solid var(--border)}
+  .rtoolbar .stopbtn:hover{color:var(--text);filter:none}
   .rspeed{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
   .rspeed input{accent-color:var(--accent)}
   @media(max-width:820px){
@@ -224,30 +226,44 @@ let _voices = [];
 function loadVoices(){ _voices = window.speechSynthesis ? speechSynthesis.getVoices() : []; }
 if(window.speechSynthesis){ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
 function pickKoVoice(){ return _voices.find(v=>/^ko/i.test(v.lang)) || _voices.find(v=>/korean|한국/i.test(v.name)) || null; }
-let _speaking = false;
-function updateSpeakBtn(){ const b=document.getElementById('ttsBtn'); if(b) b.textContent = _speaking ? '⏹ 정지' : '🔊 읽어주기'; }
-function stopSpeak(){ if(window.speechSynthesis) speechSynthesis.cancel(); _speaking=false; updateSpeakBtn(); }
+let _tts = 'idle';   // idle | playing | paused
+function setTtsBtn(){ const b=document.getElementById('ttsBtn'); if(b)
+  b.textContent = _tts==='playing' ? '⏸ 일시정지' : (_tts==='paused' ? '▶ 이어듣기' : '🔊 읽어주기'); }
+function stopSpeak(){ if(window.speechSynthesis) speechSynthesis.cancel(); _tts='idle'; setTtsBtn(); }
+// 음성용 텍스트 정리: 이모지·화살표·도형·마크다운 잔재(별표 등)를 제거
+function cleanForSpeech(t){
+  return t
+    .replace(/[\u{1F000}-\u{1FAFF}]/gu,' ')                 // 이모지(🎯📊🔥🌆 등)
+    .replace(/[☀-➿]/g,' ')                        // 기호·딩뱃(✅❌⚠⚙☑ 등)
+    .replace(/[←-⇿⬀-⯿■-◿]/g,' ') // 화살표·도형(▸▾→←■ 등)
+    .replace(/[️‍]/g,'')                          // variation selector / ZWJ
+    .replace(/[*_`#>|~]/g,' ')                              // 마크다운 잔재(**, _, # 등)
+    .replace(/[=\-─—–]{2,}/g,' ')                           // 구분선(====, ----)
+    .replace(/\s+/g,' ').trim();
+}
 // 읽을 텍스트 추출: 제목·문단·리스트·인용구만 (표·코드는 건너뜀)
 function extractReadable(md){
   const out=[];
   md.querySelectorAll('h1,h2,h3,h4,p,li,blockquote').forEach(el=>{
     if(el.closest('table') || el.closest('pre')) return;
-    const t = el.textContent.replace(/\s+/g,' ').trim();
+    const t = cleanForSpeech(el.textContent);
     if(t) out.push(t);
   });
   return out;
 }
-function speakReport(){
+function ttsToggle(){
   if(!window.speechSynthesis){ alert('이 브라우저는 음성 읽기를 지원하지 않습니다.'); return; }
-  if(_speaking){ stopSpeak(); return; }
+  if(_tts==='playing'){ speechSynthesis.pause();  _tts='paused';  setTtsBtn(); return; }   // 일시정지
+  if(_tts==='paused'){  speechSynthesis.resume(); _tts='playing'; setTtsBtn(); return; }   // 이어듣기
+  // idle → 처음부터 재생
   const md = $content.querySelector('.md'); if(!md) return;
   const chunks = extractReadable(md); if(!chunks.length) return;
   const voice = pickKoVoice();
   const rate = parseFloat((document.getElementById('ttsRate')||{}).value || '1');
-  _speaking = true; updateSpeakBtn();
+  _tts='playing'; setTtsBtn();
   let i=0;
   const next = ()=>{
-    if(!_speaking || i>=chunks.length){ _speaking=false; updateSpeakBtn(); return; }
+    if(_tts==='idle' || i>=chunks.length){ _tts='idle'; setTtsBtn(); return; }
     const u = new SpeechSynthesisUtterance(chunks[i]);
     u.lang='ko-KR'; if(voice) u.voice=voice; u.rate=rate; u.pitch=1;
     u.onend=()=>{ i++; next(); };
@@ -265,7 +281,8 @@ async function openReport(el){
   try{
     const md = await (await fetch(el.dataset.url)).text();
     $content.innerHTML =
-      '<div class="rtoolbar"><button id="ttsBtn" onclick="speakReport()">🔊 읽어주기</button>'
+      '<div class="rtoolbar"><button id="ttsBtn" onclick="ttsToggle()">🔊 읽어주기</button>'
+      + '<button class="stopbtn" onclick="stopSpeak()">⏹ 처음으로</button>'
       + '<label class="rspeed">속도 <input id="ttsRate" type="range" min="0.7" max="1.6" step="0.1" value="1"></label></div>'
       + '<div class="md">'+marked.parse(stripFM(md))+'</div>';
     $content.scrollTop=0; window.scrollTo(0,0);
