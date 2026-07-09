@@ -246,6 +246,7 @@ function extractReadable(md){
   const out=[];
   md.querySelectorAll('h1,h2,h3,h4,p,li,blockquote').forEach(el=>{
     if(el.closest('table') || el.closest('pre')) return;
+    if(el.querySelector('p,li,blockquote,h1,h2,h3,h4')) return;   // 다른 블록을 품은 껍데기(인용구 등)는 건너뜀 → 중복 방지
     const t = cleanForSpeech(el.textContent);
     if(t) out.push(t);
   });
