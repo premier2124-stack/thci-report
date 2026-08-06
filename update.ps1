@@ -30,7 +30,12 @@ $analysisSrc = Join-Path $base "종목분석리포트"
 New-Item -ItemType Directory -Force -Path "$repo\analysis" | Out-Null
 if (Test-Path "$analysisSrc\*.md") { Copy-Item "$analysisSrc\*.md" "$repo\analysis\" -Force }
 
-git add reports premarket analysis
+# 실시간 특징주 아카이브 (realtime_teuk_bot.py가 날짜별 .md 생성)
+$teukjuSrc = Join-Path $base "2026_특징주"
+New-Item -ItemType Directory -Force -Path "$repo\teukju" | Out-Null
+if (Test-Path "$teukjuSrc\*.md") { Copy-Item "$teukjuSrc\*.md" "$repo\teukju\" -Force }
+
+git add reports premarket analysis teukju
 $msg = "reports update " + (Get-Date -Format "yyyy-MM-dd HH:mm")
 git commit -m $msg
 if ($LASTEXITCODE -eq 0) { git push; Write-Host "`n[OK] 동기화 완료 — 1~2분 후 사이트 반영." -ForegroundColor Green }
