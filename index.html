@@ -85,6 +85,9 @@
   .rtoolbar button:hover{filter:brightness(1.1)}
   .rtoolbar .stopbtn{background:var(--panel);color:var(--muted);border:1px solid var(--border)}
   .rtoolbar .stopbtn:hover{color:var(--text);filter:none}
+  .rtoolbar .dlbtn{background:var(--panel);color:var(--text);border:1px solid var(--muted2)}
+  .rtoolbar .dlbtn:hover{border-color:var(--accent);color:var(--accent);filter:none}
+  .rtoolbar .dlbtn:disabled{opacity:.55;cursor:default;border-color:var(--border)}
   .rspeed{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
   .rspeed input{accent-color:var(--accent)}
   @media(max-width:820px){
@@ -215,11 +218,57 @@ async function loadList(){
 function selectCat(el){
   document.querySelectorAll('.cat').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
-  const items = _groups.get(decodeURIComponent(el.dataset.g)) || [];
+  _curGroup = decodeURIComponent(el.dataset.g);
+  const items = _groups.get(_curGroup) || [];
+  _curItems = items;                       // 묶음 내려받기용
   $cards.innerHTML = items.map((o,i)=>
-    `<a class="card${i===0?' active':''}" data-url="${o.f.download_url}" onclick="openReport(this)">`
+    `<a class="card${i===0?' active':''}" data-url="${o.f.download_url}" data-name="${o.f.name}" onclick="openReport(this)">`
     + `<div class="li-date">${o.p.date||'—'}</div><div class="li-title">${o.p.title}</div></a>`).join('');
   const firstCard = $cards.querySelector('.card'); if(firstCard) openReport(firstCard);
+}
+
+// ── 마크다운 내려받기 (같이 보는 사람이 원본을 그대로 가져갈 수 있게) ──
+const TYPE_LABEL = { evening:'마감리뷰', premarket:'장전브리핑', weekly:'주간리뷰',
+                     monthly:'월간리뷰', analysis:'종목분석', teukju:'특징주' };
+let _curMd = '', _curName = '', _curItems = [], _curGroup = '';
+
+function saveText(text, filename){
+  const url = URL.createObjectURL(new Blob([text], {type:'text/markdown;charset=utf-8'}));
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+function safeName(s){ return (s||'').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,'_'); }
+
+function downloadOne(){
+  if(!_curMd) return;
+  saveText(_curMd, _curName || 'report.md');
+}
+
+// 지금 열린 카테고리(월/섹터)의 .md를 전부 받아 한 파일로 합친다 — 오래된 것부터
+async function downloadGroup(){
+  const btn = document.getElementById('dlGroup');
+  const list = [..._curItems].reverse();          // 카드는 최신순이라 뒤집어 시간순으로
+  if(!list.length) return;
+  const label = btn ? btn.textContent : '';
+  if(btn) btn.disabled = true;
+  try{
+    const parts = [];
+    for(let i=0;i<list.length;i++){
+      if(btn) btn.textContent = `📦 받는 중 ${i+1}/${list.length}`;
+      const t = await (await fetch(list[i].f.download_url)).text();
+      parts.push(`<!-- ===== ${list[i].f.name} ===== -->\n\n` + t.trim());
+    }
+    const head = `# ${_curGroup} · ${TYPE_LABEL[_type]||_type} 모음\n\n`
+               + `> ${list.length}개 파일 합본 · 내려받은 시각 ${new Date().toLocaleString('ko-KR')}\n`;
+    saveText(head + '\n\n' + parts.join('\n\n\n'),
+             `${safeName(_curGroup)}_${TYPE_LABEL[_type]||_type}_모음.md`);
+  }catch(e){
+    alert('묶음 내려받기 실패: ' + e.message);
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 // ── 음성 읽기 (브라우저 내장 TTS, 무료·서버 불필요) ──
@@ -282,10 +331,16 @@ async function openReport(el){
   $content.innerHTML='<div class="spinner"></div>';
   try{
     const md = await (await fetch(el.dataset.url)).text();
+    _curMd = md; _curName = el.dataset.name || 'report.md';
     $content.innerHTML =
       '<div class="rtoolbar"><button id="ttsBtn" onclick="ttsToggle()">🔊 읽어주기</button>'
       + '<button class="stopbtn" onclick="stopSpeak()">⏹ 처음으로</button>'
-      + '<label class="rspeed">속도 <input id="ttsRate" type="range" min="0.7" max="1.6" step="0.1" value="1"></label></div>'
+      + '<label class="rspeed">속도 <input id="ttsRate" type="range" min="0.7" max="1.6" step="0.1" value="1"></label>'
+      + '<button class="dlbtn" onclick="downloadOne()" title="'+_curName+'">📥 .md 저장</button>'
+      + (_curItems.length>1
+          ? '<button class="dlbtn" id="dlGroup" onclick="downloadGroup()">📦 '+_curGroup+' 전체 ('+_curItems.length+')</button>'
+          : '')
+      + '</div>'
       + '<div class="md">'+marked.parse(stripFM(md))+'</div>';
     $content.scrollTop=0; window.scrollTo(0,0);
   }catch(e){ $content.innerHTML='<div class="err">불러오기 실패: '+e.message+'</div>'; }
