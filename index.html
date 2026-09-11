@@ -342,6 +342,13 @@ async function openReport(el){
           : '')
       + '</div>'
       + '<div class="md">'+marked.parse(stripFM(md))+'</div>';
+    $content.querySelectorAll('.md a[href]').forEach(link => {
+      const url = new URL(link.href, window.location.href);
+      if ((url.protocol === 'https:' || url.protocol === 'http:') && url.origin !== window.location.origin) {
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+      }
+    });
     $content.scrollTop=0; window.scrollTo(0,0);
   }catch(e){ $content.innerHTML='<div class="err">불러오기 실패: '+e.message+'</div>'; }
 }
