@@ -70,6 +70,10 @@
   .md blockquote{border-left:3px solid var(--accent);background:var(--panel);margin:.8em 0;
         padding:8px 14px;border-radius:0 8px 8px 0;color:var(--muted)}
   .md table{border-collapse:collapse;width:100%;margin:1em 0;font-size:13.5px}
+  .md .table-scroll{max-width:100%;margin:1em 0;overflow-x:auto;
+       -webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  .md .table-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .md .table-scroll table{margin:0}
   .md th,.md td{border:1px solid var(--border);padding:7px 10px;text-align:left}
   .md th{background:var(--panel);font-weight:700}
   .md code{background:var(--panel);padding:2px 6px;border-radius:4px;font-size:13px}
@@ -98,6 +102,8 @@
     header .menu{display:none}
     main{padding:18px 16px 60px}
     .md h1{font-size:21px} .md h2{font-size:17px}
+    .md .table-scroll th,.md .table-scroll td:first-child{white-space:nowrap}
+    .md .table-scroll table.wide-table{min-width:640px}
   }
 </style>
 </head>
@@ -324,6 +330,22 @@ function ttsToggle(){
   next();
 }
 
+function makeTablesScrollable(root){
+  root.querySelectorAll('table').forEach(table => {
+    if(table.parentElement.classList.contains('table-scroll')) return;
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-scroll';
+    wrapper.tabIndex = 0;
+    wrapper.setAttribute('role', 'region');
+    wrapper.setAttribute('aria-label', '표 · 좌우로 스크롤하여 전체 내용 보기');
+    const columns = Math.max(0, ...Array.from(table.rows, row =>
+      Array.from(row.cells).reduce((sum, cell) => sum + cell.colSpan, 0)));
+    if(columns >= 6) table.classList.add('wide-table');
+    table.before(wrapper);
+    wrapper.append(table);
+  });
+}
+
 async function openReport(el){
   document.querySelectorAll('.card').forEach(x=>x.classList.remove('active'));
   el.classList.add('active');
@@ -342,6 +364,7 @@ async function openReport(el){
           : '')
       + '</div>'
       + '<div class="md">'+marked.parse(stripFM(md))+'</div>';
+    makeTablesScrollable($content.querySelector('.md'));
     $content.querySelectorAll('.md a[href]').forEach(link => {
       const url = new URL(link.href, window.location.href);
       if ((url.protocol === 'https:' || url.protocol === 'http:') && url.origin !== window.location.origin) {
