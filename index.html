@@ -63,6 +63,9 @@
   /* 마크다운 렌더 */
   .md{max-width:900px;margin:0}
   .md h1{font-size:26px;border-bottom:2px solid var(--border);padding-bottom:10px;margin:.2em 0 .6em}
+  .md h2.issue-heading{border:0;padding:0;color:#172a40;line-height:1.6;word-break:keep-all;overflow-wrap:anywhere}
+  .md .issue-highlight{background:linear-gradient(transparent 38%,#fff1a5 38%);padding:0 .2em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+  .md.premarket-report .stock-line{font-size:1.08em;color:#263e58;margin:1.4em 0 .5em}
   .md h2{font-size:20px;border-bottom:1px solid var(--border);padding-bottom:6px;margin:1.4em 0 .5em;color:var(--text)}
   .md h3{font-size:16px;margin:1.2em 0 .4em;color:var(--accent)}
   .md h4{font-size:14px;margin:1em 0 .3em;color:var(--muted)}
@@ -378,6 +381,18 @@ async function openReport(el){
           : '')
       + '</div>'
       + '<div class="md">'+marked.parse(stripFM(md))+'</div>';
+    if(_type === 'premarket'){
+      const report = $content.querySelector('.md');
+      report.classList.add('premarket-report');
+      report.querySelectorAll('h2').forEach(heading => {
+        if(!/^\d{2,}\s*·/.test(heading.textContent.trim())) return;
+        heading.classList.add('issue-heading');
+        const highlight = document.createElement('span');
+        highlight.className = 'issue-highlight';
+        highlight.append(...heading.childNodes);
+        heading.append(highlight);
+      });
+    }
     makeTablesScrollable($content.querySelector('.md'));
     applyReportPalette($content.querySelector('.md'));
     $content.querySelectorAll('.md a[href]').forEach(link => {
